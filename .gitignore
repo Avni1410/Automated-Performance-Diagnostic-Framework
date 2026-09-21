@@ -6,3 +6,5 @@ __pycache__/
 .env
 .vscode/
 data/
+cpp/thread_demo/race_condition
+cpp/thread_demo/mutex_fixed
