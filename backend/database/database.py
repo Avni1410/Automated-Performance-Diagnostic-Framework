@@ -42,7 +42,8 @@ def init_db():
             disk_percent REAL NOT NULL,
             process_count INTEGER NOT NULL,
             thread_count INTEGER NOT NULL,
-            network_connections INTEGER NOT NULL DEFAULT 0
+            network_connections INTEGER NOT NULL DEFAULT 0,
+            file_descriptor_count INTEGER NOT NULL DEFAULT 0
         )
     """)
 
@@ -58,6 +59,12 @@ def init_db():
             "ADD COLUMN network_connections INTEGER NOT NULL DEFAULT 0"
         )
 
+    if "file_descriptor_count" not in existing_columns:
+        cursor.execute(
+            "ALTER TABLE system_metrics "
+            "ADD COLUMN file_descriptor_count INTEGER NOT NULL DEFAULT 0"
+        )
+
     conn.commit()
     conn.close()
 
@@ -68,7 +75,8 @@ def insert_metrics(
     disk_percent: float,
     process_count: int,
     thread_count: int,
-    network_connections: int = 0
+    network_connections: int = 0,
+    file_descriptor_count: int = 0
 ):
     """
     Inserts one system metric snapshot into the database.
@@ -85,8 +93,8 @@ def insert_metrics(
     cursor.execute("""
         INSERT INTO system_metrics
         (timestamp, cpu_percent, memory_percent, disk_percent,
-         process_count, thread_count, network_connections)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+         process_count, thread_count, network_connections, file_descriptor_count)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         timestamp,
         cpu_percent,
@@ -94,7 +102,9 @@ def insert_metrics(
         disk_percent,
         process_count,
         thread_count,
-        network_connections
+        network_connections,
+        file_descriptor_count
+
     ))
 
     conn.commit()

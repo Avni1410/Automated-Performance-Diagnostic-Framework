@@ -18,7 +18,7 @@ from backend.collector.process import get_all_processes
 from backend.collector.network import get_network_metrics
 from backend.database.database import init_db, insert_metrics
 from backend.config import MONITOR_INTERVAL_SECONDS
-
+from backend.collector.file_descriptors import get_system_fd_summary
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,7 +40,7 @@ def collect_and_store_once():
         disk = get_disk_metrics()
         processes = get_all_processes()
         network = get_network_metrics()
-
+        fd_summary = get_system_fd_summary()
         total_threads = sum(
             p["num_threads"] for p in processes
         )
@@ -51,7 +51,8 @@ def collect_and_store_once():
             disk_percent=disk["percent"],
             process_count=len(processes),
             thread_count=total_threads,
-            network_connections=network["total_connections"]
+            network_connections=network.get("total_connections", 0),
+            file_descriptor_count=fd_summary.get("total_fds", 0),
         )
 
         return {
@@ -60,7 +61,8 @@ def collect_and_store_once():
             "disk": disk["percent"],
             "processes": len(processes),
             "threads": total_threads,
-            "network": network["total_connections"]
+            "network": network.get("total_connections", 0),
+            "fds": fd_summary.get("total_fds", 0),
         }
 
     except Exception as e:
@@ -89,6 +91,7 @@ def main():
                     f"Processes: {summary['processes']} | "
                     f"Threads: {summary['threads']} | "
                     f"Network Connections: {summary['network']}"
+                    f" | FDs: {summary['fds']}"
                 )
 
             time.sleep(MONITOR_INTERVAL_SECONDS)
