@@ -15,6 +15,7 @@ from backend.collector.cpu import get_cpu_metrics
 from backend.collector.memory import get_memory_metrics
 from backend.collector.disk import get_disk_metrics
 from backend.collector.process import get_all_processes
+from backend.collector.network import get_network_metrics
 from backend.database.database import init_db, insert_metrics
 from backend.config import MONITOR_INTERVAL_SECONDS
 
@@ -38,25 +39,28 @@ def collect_and_store_once():
         memory = get_memory_metrics()
         disk = get_disk_metrics()
         processes = get_all_processes()
+        network = get_network_metrics()
 
         total_threads = sum(
             p["num_threads"] for p in processes
         )
 
         insert_metrics(
-    cpu_percent=cpu["total_percent"],
-    memory_percent=memory["percent"],
-    disk_percent=disk["percent"],
-    process_count=len(processes),
-    thread_count=total_threads
-)
+            cpu_percent=cpu["total_percent"],
+            memory_percent=memory["percent"],
+            disk_percent=disk["percent"],
+            process_count=len(processes),
+            thread_count=total_threads,
+            network_connections=network["total_connections"]
+        )
 
         return {
             "cpu": cpu["total_percent"],
             "memory": memory["percent"],
             "disk": disk["percent"],
             "processes": len(processes),
-            "threads": total_threads
+            "threads": total_threads,
+            "network": network["total_connections"]
         }
 
     except Exception as e:
@@ -83,7 +87,8 @@ def main():
                     f"Memory: {summary['memory']}% | "
                     f"Disk: {summary['disk']}% | "
                     f"Processes: {summary['processes']} | "
-                    f"Threads: {summary['threads']}"
+                    f"Threads: {summary['threads']} | "
+                    f"Network Connections: {summary['network']}"
                 )
 
             time.sleep(MONITOR_INTERVAL_SECONDS)

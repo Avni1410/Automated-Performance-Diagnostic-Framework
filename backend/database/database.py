@@ -22,7 +22,12 @@ def init_db():
     """
     Creates the database file and system_metrics table if they
     don't already exist.
+
+    Also performs a migration for databases created during
+    earlier phases by adding the network_connections column
+    if it does not already exist.
     """
+
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     conn = sqlite3.connect(DB_PATH)
@@ -36,9 +41,22 @@ def init_db():
             memory_percent REAL NOT NULL,
             disk_percent REAL NOT NULL,
             process_count INTEGER NOT NULL,
-            thread_count INTEGER NOT NULL
+            thread_count INTEGER NOT NULL,
+            network_connections INTEGER NOT NULL DEFAULT 0
         )
     """)
+
+    # Migration:
+    # Check whether an existing database from Phase 5/6
+    # already contains the network_connections column.
+    cursor.execute("PRAGMA table_info(system_metrics)")
+    existing_columns = [row[1] for row in cursor.fetchall()]
+
+    if "network_connections" not in existing_columns:
+        cursor.execute(
+            "ALTER TABLE system_metrics "
+            "ADD COLUMN network_connections INTEGER NOT NULL DEFAULT 0"
+        )
 
     conn.commit()
     conn.close()
@@ -49,10 +67,14 @@ def insert_metrics(
     memory_percent: float,
     disk_percent: float,
     process_count: int,
-    thread_count: int
+    thread_count: int,
+    network_connections: int = 0
 ):
     """
     Inserts one system metric snapshot into the database.
+
+    network_connections defaults to 0 for backward compatibility
+    with code written before Phase 7.
     """
 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -63,15 +85,16 @@ def insert_metrics(
     cursor.execute("""
         INSERT INTO system_metrics
         (timestamp, cpu_percent, memory_percent, disk_percent,
-         process_count, thread_count)
-        VALUES (?, ?, ?, ?, ?, ?)
+         process_count, thread_count, network_connections)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (
         timestamp,
         cpu_percent,
         memory_percent,
         disk_percent,
         process_count,
-        thread_count
+        thread_count,
+        network_connections
     ))
 
     conn.commit()
